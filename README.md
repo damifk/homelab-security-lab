@@ -28,6 +28,10 @@ The goal of this lab is to gain hands-on experience with security monitoring, at
 - Installed Docker Engine and Docker Compose
 - Deployed first containerised service (Pi-hole)
 - Verified networking and container connectivity
+- Pi-hole deployed via Docker Compose  
+- Resolved port 53 conflicts with systemd-resolved  
+- Exposed Pi-hole dashboard and confirmed healthy container status  
+
 
 ## Planned Additions
 
