@@ -1,17 +1,23 @@
 # Architecture Decision Record – Wazuh Deployment
 
 ## Context
-Attempted to deploy Wazuh single-node (manager, indexer, dashboard) using Docker on Apple Silicon (ARM64).
+Initial attempts were made to deploy Wazuh using Docker on Apple Silicon (ARM64) and later on an Azure VM.
 
-## Issues
-Persistent container restart loops due to:
-- ARM vs amd64 image compatibility
-- TLS/bootstrap complexity in Wazuh Docker stack
-- Lack of stable, documented ARM support
+## Issue
+The Docker-based Wazuh single-node stack presented multiple challenges:
+- ARM vs amd64 compatibility issues
+- Certificate generation inconsistencies
+- Docker volume and port conflicts
+- Repository changes impacting reproducibility
 
 ## Decision
-Pivot Wazuh deployment to an Azure x86_64 virtual machine to ensure stability and allow full SOC detection capabilities.
+The Wazuh deployment was migrated to an Azure x86_64 virtual machine and installed using the official Wazuh installation script.
 
 ## Outcome
-Local lab retained for attack simulation.
-Detection stack moved to cloud-based infrastructure.
+- Fully functional Wazuh Manager, Indexer, and Dashboard
+- TLS-secured web interface
+- Stable and supported deployment
+- Clear separation between attack simulation (local lab) and detection (cloud SIEM)
+
+## Rationale
+This approach reflects real-world SOC environments where stability, supportability, and clarity outweigh containerisation convenience.
