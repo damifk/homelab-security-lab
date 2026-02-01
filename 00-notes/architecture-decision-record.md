@@ -1,23 +1,27 @@
-# Architecture Decision Record – Wazuh Deployment
 
-## Context
-Initial attempts were made to deploy Wazuh using Docker on Apple Silicon (ARM64) and later on an Azure VM.
+# Architecture Decisions
 
-## Issue
-The Docker-based Wazuh single-node stack presented multiple challenges:
-- ARM vs amd64 compatibility issues
-- Certificate generation inconsistencies
-- Docker volume and port conflicts
-- Repository changes impacting reproducibility
+## Docker vs Native SIEM Deployment
 
-## Decision
-The Wazuh deployment was migrated to an Azure x86_64 virtual machine and installed using the official Wazuh installation script.
+Initial attempts to deploy Wazuh using Docker on ARM64 revealed instability due to:
+- Certificate generation mismatches
+- Repository structure changes
+- Architecture assumptions
 
-## Outcome
-- Fully functional Wazuh Manager, Indexer, and Dashboard
-- TLS-secured web interface
-- Stable and supported deployment
-- Clear separation between attack simulation (local lab) and detection (cloud SIEM)
+Decision:
+- Move SIEM to Azure x86_64
+- Use official installer
 
-## Rationale
-This approach reflects real-world SOC environments where stability, supportability, and clarity outweigh containerisation convenience.
+Outcome:
+- Stable, supported deployment
+- Production-like behaviour
+
+---
+
+## ARM64 Agent Strategy
+
+ARM64 agent installation required:
+- APT repository usage instead of direct `.deb`
+- Explicit version pinning to avoid manager mismatch
+- Manual configuration of manager address
+
