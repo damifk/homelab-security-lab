@@ -10,17 +10,17 @@ The goal of this lab is to gain hands-on experience with security monitoring, at
 
 - Host: macOS (Apple Silicon)
 - Virtualisation: UTM
-- Guest OS: Ubuntu Server 22.04 (ARM64)
+- Guest OS: Ubuntu Server 22.04
 - Container Platform: Docker & Docker Compose
 - Attacker VM: Kali Linux (ARM64)
 
 ## What This Lab Covers
 
-- Building and managing a lightweight SOC lab on ARM hardware
+- Building and managing a lightweight SOC lab
 - Deploying containerised security services
 - Simulating real-world attacks
 - Analysing logs and alerts
-- Documenting findings like a SOC analyst
+- Documenting findings
 
 ## Current Progress
 
@@ -31,16 +31,16 @@ The goal of this lab is to gain hands-on experience with security monitoring, at
 - Pi-hole deployed via Docker Compose  
 - Resolved port 53 conflicts with systemd-resolved  
 - Exposed Pi-hole dashboard and confirmed healthy container status  
-
+- Deployed Wazuh SIEM on Azure using official installer
+- Onboarded ARM64 Ubuntu agent from local lab
 
 ## Planned Additions
 
-- Wazuh SIEM deployment
 - IDS integration (Suricata)
 - Attack simulations from Kali Linux
 - Alert investigation and reporting
 
+
 ## Why This Lab Exists
 
-I am actively pursuing SOC Analyst and Blue Team roles.  
 This homelab demonstrates practical experience with security tooling, Linux administration, Docker, and incident detection beyond theory and certifications.
