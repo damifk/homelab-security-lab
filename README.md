@@ -113,6 +113,16 @@ TCP 1515 – agent enrollment
 
 TCP 1514 – agent telemetry
 
+## Detection Validation
+
+The following detections were successfully generated and validated:
+
+- SSH authentication failures (brute-force behaviour)
+- Privilege escalation via sudo
+- Package installation and system changes
+
+Alerts were observed in the Wazuh dashboard with correct rule levels, decoded fields, and agent attribution.
+
 
 ## Key Lessons Learned
 
@@ -125,8 +135,7 @@ TCP 1514 – agent telemetry
 
 ## Next Steps
 
-- Generate test alerts (SSH failures, sudo abuse, file integrity)
-- Validate detections in Wazuh
+
 - Expand to additional agents
 - Explore IDS integration (Suricata)
 
