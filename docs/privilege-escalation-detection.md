@@ -25,15 +25,13 @@ valid login attempts were performed on the monitored Linux host.
 ```bash
 ssh fakeuser@localhost
 ```
-Observed detections:
-
+#### Observed detections:
 - SSH login attempts using a non-existent user
 - PAM authentication failures
 - Brute-force behaviour detection
 - Multiple correlated alerts over a short time window
 
-### Example alerts:
-
+#### Example alerts:
 - sshd: Attempt to login using a non-existent user
 - PAM: User login failed
 - sshd: brute force trying to get access to the system
@@ -46,7 +44,7 @@ unauthorised access attempts.
 ssh user@localhost
 ```
 
-### Observed detections:
+#### Observed detections:
 
 - System user successfully logged to the system
 - PAM: Login session opened
@@ -54,7 +52,7 @@ ssh user@localhost
 Successful authentication events were logged at a lower severity
 and correctly classified as legitimate access.
 
-### Analyst takeaway
+#### Takeaways:
 
 - Wazuh successfully differentiates between:
 - Malicious authentication attempts
@@ -91,17 +89,12 @@ Commands such as whoami and id were logged and associated with the
 elevated session but did not generate standalone alerts, as they did not
 represent a new security boundary crossing.
 
-Analyst interpretation
 
 Wazuh correctly:
-
-Detected privilege escalation
-
-Correlated subsequent commands to the same session
-
-Avoided alert duplication
-
-Maintained contextual awareness of user activity
+- Detected privilege escalation
+- Correlated subsequent commands to the same session
+- Avoided alert duplication
+- Maintained contextual awareness of user activity
 
 This demonstrates effective alert correlation and noise reduction,
 which aligns with real-world SOC monitoring practices.
