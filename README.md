@@ -1,149 +1,123 @@
 # Homelab Security Lab (SOC-Focused)
 
-This repository documents my personal cybersecurity homelab designed to simulate a real-world Security Operations Centre (SOC) environment.
+This repository documents my personal cybersecurity homelab designed to simulate
+a real-world Security Operations Centre (SOC) environment.
 
 The goal of this lab is to build practical experience in:
 - Detection engineering
 - Endpoint telemetry and agent management
-- Cloud-hosted SIEM deployment
+- Local SIEM deployment
 - Incident visibility and troubleshooting
 
-Rather than a single-machine demo, this lab uses a **hybrid architecture** combining a local attack environment with a cloud-hosted SIEM.
+The lab uses a **fully local architecture** combining an ARM64 services host
+with a dedicated x86_64 SIEM VM, both running under UTM on Apple Silicon.
+Azure is reserved exclusively for Microsoft Sentinel and Defender practice.
 
 ---
 
 ## High-Level Architecture
+
 ```
-[Local ARM64 Lab - Apple Silicon]
-├─ Ubuntu Server (ARM64)
-│ ├─ Docker & Docker Compose
-│ ├─ OWASP Juice Shop
-│ ├─ Pi-hole
-│ └─ Wazuh Agent (4.7.5)
+[Local Lab - Apple Silicon (UTM)]
 │
-├─ Kali Linux (ARM64)
-│ └─ Attack simulation
+├─ Ubuntu Server ARM64 (homeserver)
+│   ├─ Docker & Docker Compose
+│   ├─ OWASP Juice Shop (port 8081)
+│   ├─ Pi-hole (port 8080)
+│   └─ Wazuh Agent (4.7.5)
 │
-└─ Telemetry (TCP 1514)  
-            ↓
-[Azure VM - x86_64]
-├─ Wazuh Manager
-├─ Wazuh Indexer
-└─ Wazuh Dashboard
+├─ Ubuntu Server x86_64 (wazuh-server) [UTM Emulation]
+│   ├─ Wazuh Manager (4.7.5)
+│   ├─ Wazuh Indexer (OpenSearch)
+│   ├─ Wazuh Dashboard (port 443)
+│   └─ Filebeat
+│
+└─ Kali Linux ARM64
+    └─ Attack simulation
 ```
+
 ---
 
 ## Environment
 
-### Local Lab
-- Host: macOS (Apple Silicon / ARM64)
-- Virtualisation: UTM
-- Guest OS: Ubuntu Server 22.04 (ARM64)
-- Tools:
-  - Docker
-  - Docker Compose
-  - OWASP Juice Shop
-  - Pi-hole
-  - Kali Linux
+### ARM64 Services Host (homeserver)
+- Virtualisation: UTM (Apple Hypervisor)
+- OS: Ubuntu Server 22.04 ARM64
+- RAM: 6GB
+- Storage: 30GB
+- Services: Docker, Juice Shop, Pi-hole, Wazuh Agent
 
-### Cloud SIEM
+### x86_64 SIEM Host (wazuh-server)
+- Virtualisation: UTM (Emulation)
+- OS: Ubuntu Server 22.04 x86_64
+- RAM: 6GB
+- Storage: 40GB
+- Services: Wazuh Manager, Indexer, Dashboard
+
+### Azure (Reserved)
 - Platform: Microsoft Azure
-- VM Architecture: x86_64
-- OS: Ubuntu Server
-- SIEM: Wazuh (official installer)
+- Use: Microsoft Sentinel, Defender for Cloud, Log Analytics
+- Not used for Wazuh
 
 ---
 
 ## Completed Work
 
-### Docker & Networking
-- Installed Docker and Docker Compose on ARM64 Ubuntu
-- Verified networking, DNS resolution, and container communication
-- Deployed test containers (hello-world, Juice Shop)
+### Lab Architecture
+- Confirmed Wazuh official installer is x86_64 only (hard architecture check)
+- Confirmed Docker-based Wazuh is unstable on ARM64
+- Provisioned dedicated x86_64 UTM emulation VM for SIEM
+- Moved SIEM off Azure to preserve credits for Sentinel work
 
-### Pi-hole Deployment
-- Identified and resolved port conflicts with `systemd-resolved`
-- Successfully deployed Pi-hole using Docker
-- Validated DNS sinkhole functionality
+### ARM64 Host (homeserver)
+- Installed Docker and Docker Compose
+- Deployed OWASP Juice Shop (port 8081)
+- Deployed Pi-hole DNS sinkhole (port 8080)
+- Resolved port conflicts with systemd-resolved
+- Removed broken Docker-based Wazuh stack
 
-### Wazuh SIEM Deployment (Azure)
-- Provisioned Azure VM for SIEM hosting
-- Abandoned Docker-based Wazuh due to certificate and repo instability
-- Installed Wazuh Manager, Indexer, and Dashboard using the **official installer**
-- Configured TLS and verified dashboard access
+### Wazuh SIEM (wazuh-server - local x86_64)
+- Provisioned x86_64 UTM VM
+- Installed Wazuh 4.7.5 using official all-in-one installer
+- Resolved indexer startup failure (RAM headroom — 6GB required)
+- Resolved password login failure (special character issue)
+- Confirmed dashboard accessible and operational
 
-### Wazuh Agent Onboarding (ARM → Azure)
-- Installed Wazuh agent on ARM64 Ubuntu via APT repository
-- Resolved multiple real-world issues:
-  - ARM vs AMD64 incompatibilities
-  - Rolling repository version skew (agent > manager)
-  - Explicit version pinning to Wazuh 4.7.5
-  - systemd service corruption after reinstall
-  - Missing manager configuration (`MANAGER_IP`)
-  - Stale agent keys causing “never connected” state
-  - Azure firewall separation of enrollment vs data channels
-
-- Successfully enrolled agent and established live telemetry
+### Wazuh Agent (ARM64 → Local Manager)
+- Agent re-enrollment in progress (Azure manager being replaced)
 
 ---
 
-## Wazuh Agent Onboarding (Key Steps)
-
-```bash
-# Install agent (pinned version)
-sudo apt install wazuh-agent=4.7.5-1
-sudo apt-mark hold wazuh-agent
-
-# Configure manager IP
-sudo nano /var/ossec/etc/ossec.conf
-
-# Clean stale keys
-sudo rm /var/ossec/etc/client.keys
-
-# Enrol agent
-sudo /var/ossec/bin/agent-auth -m <AZURE_IP> -p 1515 -A homeserver
-
-# Restart agent
-sudo systemctl restart wazuh-agent
-```
-
-Azure inbound rules required:
-
-TCP 1515 – agent enrollment
-
-TCP 1514 – agent telemetry
-
-## Detection Validation
-
-The following detections were successfully generated and validated:
-
-- SSH authentication failures (brute-force behaviour)
-- Privilege escalation via sudo
-- Package installation and system changes
-
-Alerts were observed in the Wazuh dashboard with correct rule levels, decoded fields, and agent attribution.
-
-
 ## Key Lessons Learned
 
-- Docker is not always suitable for complex security platforms
-- ARM64 support often requires different installation paths
-- Vendor-supported install methods matter
-- Rolling repositories require explicit version control
-- Agent enrollment and telemetry use different ports
-- Logs are more reliable than dashboards when troubleshooting
+- The Wazuh official installer hard-requires x86_64 — ARM64 is rejected
+  regardless of available RAM or flags used
+- Docker-based Wazuh is unreliable on ARM64 due to image architecture assumptions
+- UTM emulation (x86_64 on Apple Silicon) is viable for a SIEM lab workload
+- `curl -sO` can fail silently — use `curl -o filename` for reliability
+- Wazuh indexer (OpenSearch) needs true 4GB RAM; UTM emulation overhead
+  means you must configure 6GB to get sufficient available memory
+- Auto-generated passwords with special characters cause browser login failures;
+  reset immediately using wazuh-passwords-tool.sh
+- Azure credits are a finite resource — local alternatives should be exhausted
+  before using cloud infrastructure
+
+---
 
 ## Next Steps
 
+- Re-enroll ARM64 homeserver agent against local Wazuh manager
+- Validate detections (SSH brute force, privilege escalation)
+- Add Suricata IDS for network-layer visibility
+- Expand attack simulations via Kali
 
-- Expand to additional agents
-- Explore IDS integration (Suricata)
+## Repository Structure
 
-## Why This Lab Exists
-
-This project is intended to demonstrate practical SOC-relevant skills:
-- Linux administration
-- Cloud security fundamentals
-- SIEM deployment and troubleshooting
-- Endpoint telemetry and agent lifecycle management
-- Detection pipeline thinking
+```
+00-notes/          Architecture decisions and troubleshooting notes
+01-environment-setup/  VM provisioning and OS configuration
+02-docker-basics/  Docker installation and container services
+03-vulnerable-services/ Juice Shop and attack surface setup
+04-wazuh-local/    Local Wazuh SIEM installation and agent enrollment
+docs/              Detection validation writeups
+```
