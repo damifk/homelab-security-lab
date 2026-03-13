@@ -1,14 +1,15 @@
 # Detection with Wazuh
 
 ## Objective
-Validate Wazuh’s ability to detect and log activity on a Linux endpoint using real system events, MITRE ATT&CK mapping, and SIEM alerting.
+Validate Wazuh's ability to detect and log activity on a Linux endpoint
+using real system events, MITRE ATT&CK mapping, and SIEM alerting.
 
 ---
 
 ## Environment
-- **Wazuh Manager:** Azure VM (Ubuntu)
-- **Wazuh Version:** 4.7.x
-- **Endpoint Agent:** Ubuntu Linux (ARM64)
+- **Wazuh Manager:** wazuh-server (x86_64 UTM VM, local — 192.168.64.5)
+- **Wazuh Version:** 4.7.5
+- **Endpoint Agent:** homeserver (Ubuntu 24.04 ARM64, agent ID 001)
 - **Log Sources:** auth.log, PAM, sudo events
 - **Transport:** TCP 1514 (agent data), TCP 1515 (agent enrollment)
 
@@ -36,16 +37,15 @@ ssh fakeuser@localhost
 - PAM: User login failed
 - sshd: brute force trying to get access to the system
 
-These events demonstrate Wazuh’s ability to detect and escalate
+These events demonstrate Wazuh's ability to detect and escalate
 unauthorised access attempts.
 
 #### Legitimate user authentication
-``` bash
+```bash
 ssh user@localhost
 ```
 
 #### Observed detections:
-
 - System user successfully logged to the system
 - PAM: Login session opened
 
@@ -53,13 +53,12 @@ Successful authentication events were logged at a lower severity
 and correctly classified as legitimate access.
 
 #### Takeaways:
-
 - Wazuh successfully differentiates between:
-- Malicious authentication attempts
-- Normal user activity
+  - Malicious authentication attempts
+  - Normal user activity
 
 
-```bash 
+```bash
 # privilege escalation monitoring
 sudo su
 whoami
@@ -67,7 +66,7 @@ id
 exit
 ```
 
-Detection behaviour observed
+#### Detection behaviour observed
 
 Wazuh successfully detected and processed all commands executed.
 However, alerts were correlated and grouped by security context, not
@@ -76,19 +75,16 @@ displayed as one alert per command.
 Observed detections included:
 
 PAM session opened
-
-    MITRE: T1078 – Valid Accounts
+- MITRE: T1078 – Valid Accounts
 
 Successful sudo execution
-
-    MITRE: T1548.003 – Abuse Elevation Control Mechanism
+- MITRE: T1548.003 – Abuse Elevation Control Mechanism
 
 PAM session closed
 
 Commands such as whoami and id were logged and associated with the
 elevated session but did not generate standalone alerts, as they did not
 represent a new security boundary crossing.
-
 
 Wazuh correctly:
 - Detected privilege escalation
@@ -98,3 +94,10 @@ Wazuh correctly:
 
 This demonstrates effective alert correlation and noise reduction,
 which aligns with real-world SOC monitoring practices.
+
+---
+
+*Note: This detection was originally validated against an Azure-hosted
+Wazuh manager. It has since been re-validated against the local x86_64
+wazuh-server VM with identical results. See
+`docs/detection-validation-local.md` for the full local validation writeup.*
