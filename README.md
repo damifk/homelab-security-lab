@@ -24,6 +24,7 @@ Azure is reserved exclusively for Microsoft Sentinel and Defender practice.
 │   ├─ Docker & Docker Compose
 │   ├─ OWASP Juice Shop (port 8081)
 │   ├─ Pi-hole (port 8080)
+│   ├─ Suricata IDS 7.0.3 (enp0s1)
 │   └─ Wazuh Agent (4.7.5)
 │
 ├─ Ubuntu Server x86_64 (wazuh-server) [UTM Emulation]
@@ -84,7 +85,17 @@ Azure is reserved exclusively for Microsoft Sentinel and Defender practice.
 - Confirmed dashboard accessible and operational
 
 ### Wazuh Agent (ARM64 → Local Manager)
-- Agent re-enrollment in progress (Azure manager being replaced)
+- Purged corrupted agent installation
+- Resolved GPG key import and dpkg pre-removal script failures
+- Reinstalled and enrolled against local wazuh-server (192.168.64.5)
+- Live telemetry confirmed in dashboard
+
+### Suricata IDS (homeserver)
+- Installed Suricata 7.0.3 natively on ARM64
+- Configured to monitor enp0s1
+- Updated Emerging Threats Open ruleset (49,038 rules)
+- Integrated with Wazuh agent via eve.json log collection
+- Network-layer detection operational
 
 ---
 
@@ -106,10 +117,9 @@ Azure is reserved exclusively for Microsoft Sentinel and Defender practice.
 
 ## Next Steps
 
-- Re-enroll ARM64 homeserver agent against local Wazuh manager
-- Validate detections (SSH brute force, privilege escalation)
-- Add Suricata IDS for network-layer visibility
-- Expand attack simulations via Kali
+- Kali Linux attack simulations against Juice Shop
+- Dual-layer detection validation (Suricata + Wazuh endpoint)
+- Custom Wazuh rules targeting detection gaps
 
 ## Repository Structure
 
