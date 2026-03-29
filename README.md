@@ -115,11 +115,23 @@ Azure is reserved exclusively for Microsoft Sentinel and Defender practice.
 
 ---
 
-## Next Steps
+### Attack Simulations (Kali vs Juice Shop)
+- Nikto web scan — multiple ET EXPLOIT signatures fired in Suricata
+- sqlmap blind SQL injection — real vulnerability confirmed, detection gap identified
+- gobuster directory enumeration — tool fingerprinted via HTTP User-Agent
+- Dual-layer detection validated across network and endpoint layers
+- Detection gaps documented (blind SQLi evades signature-based IDS)
 
-- Kali Linux attack simulations against Juice Shop
-- Dual-layer detection validation (Suricata + Wazuh endpoint)
-- Custom Wazuh rules targeting detection gaps
+### Custom Detection Rules (Phase 4)
+- Wrote 4 custom Suricata rules targeting identified detection gaps
+- Blind SQLi detection: 0 alerts → 71 alerts on sqlmap retest
+- RANDOMBLOB time-based injection pattern detected
+- Scanner User-Agent fingerprinting rules for gobuster and Nikto
+- Detection gap from Phase 3 fully closed and validated
+
+## Next Steps
+- Microsoft Sentinel and Defender for Cloud (Azure)
+- Additional attack scenarios and custom rule expansion
 
 ## Repository Structure
 
@@ -129,5 +141,6 @@ Azure is reserved exclusively for Microsoft Sentinel and Defender practice.
 02-docker-basics/  Docker installation and container services
 03-vulnerable-services/ Juice Shop and attack surface setup
 04-wazuh-local/    Local Wazuh SIEM installation and agent enrollment
+05-suricata/       Suricata IDS setup and config
 docs/              Detection validation writeups
 ```
