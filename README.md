@@ -1,146 +1,136 @@
-# Homelab Security Lab (SOC-Focused)
+# Homelab Security Lab
 
-This repository documents my personal cybersecurity homelab designed to simulate
-a real-world Security Operations Centre (SOC) environment.
-
-The goal of this lab is to build practical experience in:
-- Detection engineering
-- Endpoint telemetry and agent management
-- Local SIEM deployment
-- Incident visibility and troubleshooting
-
-The lab uses a **fully local architecture** combining an ARM64 services host
-with a dedicated x86_64 SIEM VM, both running under UTM on Apple Silicon.
-Azure is reserved exclusively for Microsoft Sentinel and Defender practice.
+A hands-on detection engineering homelab built to develop practical SOC skills and demonstrate real-world threat detection capabilities. This project covers network intrusion detection, endpoint telemetry, attack simulation, and custom rule development — all documented as a portfolio for entry-level SOC/detection engineering roles.
 
 ---
 
-## High-Level Architecture
+## Architecture
 
-```
-[Local Lab - Apple Silicon (UTM)]
-│
-├─ Ubuntu Server ARM64 (homeserver)
-│   ├─ Docker & Docker Compose
-│   ├─ OWASP Juice Shop (port 8081)
-│   ├─ Pi-hole (port 8080)
-│   ├─ Suricata IDS 7.0.3 (enp0s1)
-│   └─ Wazuh Agent (4.7.5)
-│
-├─ Ubuntu Server x86_64 (wazuh-server) [UTM Emulation]
-│   ├─ Wazuh Manager (4.7.5)
-│   ├─ Wazuh Indexer (OpenSearch)
-│   ├─ Wazuh Dashboard (port 443)
-│   └─ Filebeat
-│
-└─ Kali Linux ARM64
-    └─ Attack simulation
-```
+| VM | OS | Role | IP |
+|---|---|---|---|
+| wazuh-server | Ubuntu Server 22.04 LTS | Wazuh SIEM (all-in-one) | 192.168.100.128 |
+| ubuntu-sensor | Ubuntu Server 24.04 LTS | Wazuh agent, Suricata IDS, OWASP Juice Shop | 192.168.100.129 |
+| kali-attacker | Kali Linux | Attack simulation | 192.168.100.130 |
+| windows-endpoint | Windows 10 Pro | Wazuh agent, Sysmon endpoint telemetry | 192.168.100.131 |
+
+All VMs run on VMware Workstation Pro (free) on a Windows PC, connected via an isolated VMnet2 NAT network (`192.168.100.0/24`).
+
+![Agents Active](screenshots/02-agents-active.png)
 
 ---
 
-## Environment
+## Lab Phases
 
-### ARM64 Services Host (homeserver)
-- Virtualisation: UTM (Apple Hypervisor)
-- OS: Ubuntu Server 22.04 ARM64
-- RAM: 6GB
-- Storage: 30GB
-- Services: Docker, Juice Shop, Pi-hole, Wazuh Agent
+### Phase 1 — Lab Setup
+VMware Workstation Pro configured with isolated VMnet2 network. Four VMs provisioned: Wazuh server, Ubuntu sensor, Kali attacker, and Windows endpoint.
 
-### x86_64 SIEM Host (wazuh-server)
-- Virtualisation: UTM (Emulation)
-- OS: Ubuntu Server 22.04 x86_64
-- RAM: 6GB
-- Storage: 40GB
-- Services: Wazuh Manager, Indexer, Dashboard
+### Phase 2 — Wazuh SIEM
+Wazuh 4.7.5 all-in-one stack deployed on Ubuntu Server 22.04. Includes Wazuh Manager, Wazuh Indexer (OpenSearch), and Wazuh Dashboard. Accessible via HTTPS on `192.168.100.128`.
 
-### Azure (Reserved)
-- Platform: Microsoft Azure
-- Use: Microsoft Sentinel, Defender for Cloud, Log Analytics
-- Not used for Wazuh
+### Phase 3 — Wazuh Agents
+Wazuh agents enrolled on both `ubuntu-sensor` (Linux) and `windows-endpoint` (Windows 10). Both reporting to the Wazuh manager with version-matched agents (4.7.5).
 
----
+### Phase 4 — Suricata IDS
+Suricata 7.x deployed on `ubuntu-sensor` monitoring interface `ens33`. Configured with `HOME_NET: 192.168.100.0/24`. Integrated with Wazuh via `eve.json` log collection. Emerging Threats ruleset active.
 
-## Completed Work
+### Phase 5 — OWASP Juice Shop
+Vulnerable web application deployed via Docker on `ubuntu-sensor` (`port 3000`). Serves as the primary attack target for structured attack simulations.
 
-### Lab Architecture
-- Confirmed Wazuh official installer is x86_64 only (hard architecture check)
-- Confirmed Docker-based Wazuh is unstable on ARM64
-- Provisioned dedicated x86_64 UTM emulation VM for SIEM
-- Moved SIEM off Azure to preserve credits for Sentinel work
+### Phase 6 — Sysmon Endpoint Telemetry
+Sysmon installed on `windows-endpoint` using Olaf Hartong's modular `sysmonconfig.xml` (chosen for its detection-focused rule set). Wazuh agent configured to collect from `Microsoft-Windows-Sysmon/Operational` event channel. Immediately producing MITRE-mapped alerts including T1087 (Account Discovery) and T1548 (Abuse Elevation Control Mechanism).
 
-### ARM64 Host (homeserver)
-- Installed Docker and Docker Compose
-- Deployed OWASP Juice Shop (port 8081)
-- Deployed Pi-hole DNS sinkhole (port 8080)
-- Resolved port conflicts with systemd-resolved
-- Removed broken Docker-based Wazuh stack
+![Windows Endpoint Alerts](screenshots/05-windows-sysmon-alerts.png)
 
-### Wazuh SIEM (wazuh-server - local x86_64)
-- Provisioned x86_64 UTM VM
-- Installed Wazuh 4.7.5 using official all-in-one installer
-- Resolved indexer startup failure (RAM headroom — 6GB required)
-- Resolved password login failure (special character issue)
-- Confirmed dashboard accessible and operational
+### Phase 7 — Attack Simulation
+Structured attack campaigns from `kali-attacker` against Juice Shop:
 
-### Wazuh Agent (ARM64 → Local Manager)
-- Purged corrupted agent installation
-- Resolved GPG key import and dpkg pre-removal script failures
-- Reinstalled and enrolled against local wazuh-server (192.168.64.5)
-- Live telemetry confirmed in dashboard
+- **Nikto** — Web server reconnaissance (8,918 requests, 28 findings)
+- **Gobuster** — Directory enumeration (discovered `/ftp`, `/api`, `/assets`)
+- **sqlmap** — SQL injection testing (confirmed boolean-based blind SQLi on `q` parameter, SQLite backend identified, 65 HTTP 500 errors generated)
 
-### Suricata IDS (homeserver)
-- Installed Suricata 7.0.3 natively on ARM64
-- Configured to monitor enp0s1
-- Updated Emerging Threats Open ruleset (49,038 rules)
-- Integrated with Wazuh agent via eve.json log collection
-- Network-layer detection operational
+![Security Alerts](screenshots/04-wazuh-security-alerts.png)
+
+### Phase 8 — Custom Suricata Detection Rules
+**Detection gap identified:** The default Emerging Threats ruleset fired on HTTP anomalies and known CVE signatures but produced zero SQL injection-specific detections during the sqlmap run.
+
+Four custom rules written to close the blind SQLi detection gap:
+
+| SID | Rule | Technique |
+|---|---|---|
+| 9000001 | Boolean-Based Blind Injection Attempt | Blind SQLi |
+| 9000002 | Time-Based Blind Injection SLEEP | Time-based blind SQLi |
+| 9000003 | UNION SELECT Injection Attempt | UNION-based SQLi |
+| 9000004 | SQLite Time-Based Blind Heavy Query (randomblob) | SQLite-specific blind SQLi |
+
+Rules stored in `/var/lib/suricata/rules/local.rules`. On retest, all three active techniques were detected in real time.
+
+![Custom SQLi Rules Firing](screenshots/03-custom-sqli-rules.png)
 
 ---
 
-## Key Lessons Learned
+## MITRE ATT&CK Coverage
 
-- The Wazuh official installer hard-requires x86_64 — ARM64 is rejected
-  regardless of available RAM or flags used
-- Docker-based Wazuh is unreliable on ARM64 due to image architecture assumptions
-- UTM emulation (x86_64 on Apple Silicon) is viable for a SIEM lab workload
-- `curl -sO` can fail silently — use `curl -o filename` for reliability
-- Wazuh indexer (OpenSearch) needs true 4GB RAM; UTM emulation overhead
-  means you must configure 6GB to get sufficient available memory
-- Auto-generated passwords with special characters cause browser login failures;
-  reset immediately using wazuh-passwords-tool.sh
-- Azure credits are a finite resource — local alternatives should be exhausted
-  before using cloud infrastructure
+| Technique | ID | Source |
+|---|---|---|
+| Account Discovery | T1087 | Sysmon / Wazuh (Windows) |
+| Abuse Elevation Control Mechanism | T1548.003 | Sysmon / Wazuh (Windows) |
+| Valid Accounts | T1078 | Wazuh PAM rules (Linux) |
+| Credential Access – Brute Force | T1110.001 | Wazuh PAM rules (Linux) |
+| Web Application Attack – SQLi | Custom | Suricata local.rules |
 
 ---
 
-### Attack Simulations (Kali vs Juice Shop)
-- Nikto web scan — multiple ET EXPLOIT signatures fired in Suricata
-- sqlmap blind SQL injection — real vulnerability confirmed, detection gap identified
-- gobuster directory enumeration — tool fingerprinted via HTTP User-Agent
-- Dual-layer detection validated across network and endpoint layers
-- Detection gaps documented (blind SQLi evades signature-based IDS)
+## Tech Stack
 
-### Custom Detection Rules (Phase 4)
-- Wrote 4 custom Suricata rules targeting identified detection gaps
-- Blind SQLi detection: 0 alerts → 71 alerts on sqlmap retest
-- RANDOMBLOB time-based injection pattern detected
-- Scanner User-Agent fingerprinting rules for gobuster and Nikto
-- Detection gap from Phase 3 fully closed and validated
+| Tool | Version | Purpose |
+|---|---|---|
+| VMware Workstation Pro | Latest (free) | Hypervisor |
+| Wazuh | 4.7.5 | SIEM / EDR |
+| Suricata | 7.x | Network IDS |
+| Sysmon | Latest | Windows endpoint telemetry |
+| OWASP Juice Shop | Latest | Vulnerable web app target |
+| Docker | Latest | Container runtime |
+| Kali Linux | Latest | Attack simulation |
+| sqlmap | 1.10.4 | SQL injection testing |
+| Nikto | Latest | Web server scanner |
+| Gobuster | 3.8.2 | Directory enumeration |
 
-## Next Steps
-- Microsoft Sentinel and Defender for Cloud (Azure)
-- Additional attack scenarios and custom rule expansion
+---
+
+## Architecture Decision Record
+
+See [architecture-decision-record.md](architecture-decision-record.md) for the full history of architectural decisions including the migration from macOS/UTM to Windows/VMware.
+
+---
 
 ## Repository Structure
 
 ```
-00-notes/          Architecture decisions and troubleshooting notes
-01-environment-setup/  VM provisioning and OS configuration
-02-docker-basics/  Docker installation and container services
-03-vulnerable-services/ Juice Shop and attack surface setup
-04-wazuh-local/    Local Wazuh SIEM installation and agent enrollment
-05-suricata/       Suricata IDS setup and config
-docs/              Detection validation writeups
+homelab-security-lab/
+├── README.md
+├── architecture-decision-record.md
+├── screenshots/
+│   ├── 01-vmware-vms.png
+│   ├── 02-agents-active.png
+│   ├── 03-custom-sqli-rules.png
+│   ├── 04-wazuh-security-alerts.png
+│   └── 05-windows-sysmon-alerts.png
+└── phase-docs/
+    ├── phase-1-lab-setup.md
+    ├── phase-2-wazuh-siem.md
+    ├── phase-3-wazuh-agents.md
+    ├── phase-4-suricata-ids.md
+    ├── phase-5-juice-shop.md
+    ├── phase-6-sysmon-endpoint.md
+    ├── phase-7-attack-simulation.md
+    └── phase-8-custom-detection-rules.md
 ```
+
+---
+
+## Author
+
+Damilola Fakorede — Entry-level SOC Analyst  
+MSc Computing (Internet Technology & Security) — Distinction  
+CompTIA Security+  
+[GitHub](https://github.com/damifk) | [LinkedIn](https://linkedin.com/in/damilola-fakorede)
